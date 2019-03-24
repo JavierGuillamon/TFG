@@ -118,23 +118,25 @@ def similarity_matrix(name_csv):
 
 def temp_update_similarity_and_playlists(name_csv, similarity, new_playlist):
     df = pd.read_csv(name_csv)
-    simil = pd.read_csv(similarity).values.tolist()
-    matrix = df.values.tolist() 
-    matrix.append(new_playlist)
-    num_playlist = len(matrix)
+    simil = pd.read_csv(similarity)
+    matrix = df.values
+    df.loc[len(matrix)-1] = pd.Series(new_playlist)
+    matrix = df.values
+    num_playlist =len(matrix)
     list1 = new_playlist
+    similarity = []
     for j in range(num_playlist):  
-        simil.append([])
         list2 = matrix[j]
         intersection = set(list1).intersection(list2)
         union = set(list1).union(list2)
         intersection = {x for x in intersection if pd.notna(x)}
         union = {x for x in union if pd.notna(x)}
-        simil[num_playlist-1].append(len(intersection) / len(union))
-    print(len(simil))
-    simildf = pd.DataFrame.from_records(similarity)
-    matrixdf = pd.DataFrame.from_records(matrix)
-    return simildf,matrixdf,num_playlist-1
+        similarity.append(len(intersection) / len(union))
+    #print(simil[1000])
+    simil[str(num_playlist-1)] = pd.Series(similarity)
+    simil.loc[num_playlist-1] = pd.Series(similarity)
+    
+    return simil,df,num_playlist-1
 # =============================================================================
 # def predict(name_similarity_matrix):
 #     K = 25
@@ -148,7 +150,7 @@ def temp_update_similarity_and_playlists(name_csv, similarity, new_playlist):
 #     #alamcenar los k vecinos en una lista ordenada, realizar elpredict y despues el MSE, para esto tengo que volver a hacer el procesamiento de datos partiendo en 80/20
 # 
 # =============================================================================
-def predict_for_playlsit(pid, similarity, playlists):
+def predict_for_playlsit(pid, similarity, playlists, actual_pl):
     #coger la fila del pid
     #seleccionar los k valores mas altos
     #contar las canciones que se repiten entre esas listas
@@ -166,10 +168,23 @@ def predict_for_playlsit(pid, similarity, playlists):
     songs = []
     for i in index:
         p = matrix[i]
-        songs = songs + [p for p in p if str(p) != 'nan' and p not in matrix[pid]]
+        songs = songs + get_songs_not_in_playlist(p,actual_pl)
     count = Counter(songs)
     return (count.most_common(5))
-   
+
+def get_songs_not_in_playlist(list1,list2):
+    songs = []
+    for i in list1:
+        if str(i) != 'nan' and (i not in list2):
+            songs.append(i)
+    return songs
+    
+def check_any_list_in_list(list1, list2):
+    for i in list1:
+        if i[0] in list2:
+            return True
+    return False
+
 def test(playlists_train, playlist_test, similarity):
     #recorrer la playlist, comprobar si alguna de las canciones del meotdo predict estan en la lista
     p=[]
@@ -177,13 +192,19 @@ def test(playlists_train, playlist_test, similarity):
     for i in range(len(playlist_test)):
         p = p +[playlist_test[i]]
         simil,playlists, pid = temp_update_similarity_and_playlists(playlists_train,similarity,p)
-        predict = predict_for_playlsit(pid,simil,playlists)
-        if(predict in playlist_test):
+        predict = predict_for_playlsit(pid,simil,playlists,p)
+        if check_any_list_in_list(predict, playlist_test):
             score +=1
-        print(p)
-        print(predict)
+# =============================================================================
+#         if playlist_test[i+1] in predict:
+#             score+=1
+# =============================================================================
+        print("Actual list: ",p)
+        print("prediction: ",predict)
+        print("actual score: ",score)
+        print("---")
     score = score/len(playlist_test)
-    print("score = "+str(score))
+    print("final score = ",str(score))
 
      
 
@@ -196,7 +217,7 @@ if __name__ == '__main__':
     elif get_similarity_matrix:
         similarity = similarity_matrix("similarity.csv")
     elif testb:
-        p = [0,1,4,6,7,8,10,15,14,36,60,34,56,50,39]
+        p = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]
         test("pruebas3.csv",p,"similarity.csv")
     else:
         print(predict_for_playlsit(0,"similarity.csv","pruebas3.csv"))
