@@ -1,0 +1,308 @@
+\documentclass{article}
+\title{Sistemas de recomendación para la creación de listas de reproducción en Spotify}
+\author{Javier Guillamón Pardo}
+
+
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+
+\begin{document}
+	\pagenumbering{gobble}
+	\maketitle
+	\newpage
+	\pagenumbering{arabic}
+	\section{Introducción}
+	\subsection{Repaso del reto RecSys Challenge 2018}
+
+	Spotify es un servicio de streaming de música online  con mas de 140 millones de usuarios activos y mas de 30 millones de canciones. Una de sus funciones más populares es la capacidad de crear listas de reproducción. Actualmente Spotify almacena mas de 2 billones de listas de reproducción.
+
+	El reto propuesto por RecSys Challenge 2018 se centra en la recomendación de música, especialmente en el el reto de la continuación automática de listas de reproducción. Proponiendo canciones apropiadas para añadir a una lista ya creada, un sistema de recomendación puede incrementar la participación del usuario haciendo más sencillo el proceso de creación de listas de reproducción, así como extendiendo la escucha más allá que el final de la lista de reproducción ya existente.
+	
+	\subsubsection{Información general}
+	RecSys Challenge 2018 está organizado por Spotify, la Universidad de Massachusetts, Amherst y Johannes Kepler University, Linz. Para más información sobre los plazos seguidos por la organización del reto y para ver los mejores resultados seleccionados puede visitar su página principal en ACM RecSys Challenge page 
+\colorbox{red}{Buscar una forma mejor de comentar esta parte, no veo como meter esto sin pegarme un tiro en el pie al mostrar mejores resultados que el mio}
+
+	\subsubsection{Tarea}
+	El objetivo del reto es desarrollar un sistema para la tarea de continuar listas de reproducción de forma automática. Dado un conjunto de datos de listas de reproducción el sistema creado debe generar una lista de canciones recomendadas que pueden añadirse a la lista de reproducción, de este modo \textit{continuando} la lista de reproducción. La tarea se defina formalmente de la siguiente manera:
+	\textbf{Entrada}
+	Una lista de reproducción creada por un usuario, representada por:
+	\begin{itemize}
+		\item meta-datos de la lista de reproducción (añadir información del README del dataset)
+		\item K semilla de canciones: una lista de las K canciones en la lista de reproducción, donde K puede ser igual a 0, 1, 5, 10, 25 o 100
+	\end{itemize}
+	\textbf{Resultado}
+	\begin{itemize}
+		\item Una lista de 500 canciones recomendadas, ordenadas por relevancia en orden decreciente
+	\end{itemize}
+	El sistema debe ser capaz de trabajar con listas de reproducción para las cuales no se suministre ninguna semilla inicial. Para evaluar el desempeño de un sistema, las canciones recomendadas del resultado se comparan con el ``conjunto de referencia'' de la lista de reproducción original.
+	\subsubsection{Dataset}
+	Como parte de este reto, Spotify ha publicado \textit{The Million Playlist Dataset} (MPD a partir de ahora). Se trata de un conjunto de 1.000.000 de listas de reproducción que han sido creadas por usuarios de Spotify, incluyen titulo de la lista de reproducción, listas de canciones y otros meta-datos explicados en mas profundidad en la siguiente sección \colorbox{red}{Añadir sección} 
+	\subsubsection{Dataset del reto y formato de entrega}
+	Como parte del reto, RecSys ha publicado un dataset separado del MPD llamado \textit{"test set"} que consiste en 10.000 listas de reproducción con información incompleta. Tiene muchos de los mismos campos de datos y sigue la misma estructura que MDP, pero las listas de reproducción solo incluyen \textit{K} canciones.
+
+	Para cada lista de reproducción en \textit{test set}, hay que entregar a Recsys una lista ordenada con 500 canciones, entregando solo las URIs de las canciones. EL formato del archivo entregado tiene que ser un csv comprimido en gzip (.csv.gz). El orden de las canciones recomendadas importa: las recomendaciones mas relevantes deben aparecer al principio de la lista. La entrega debe ser hecha con el siguiente formato separado por comas:
+	\begin{itemize}
+		\item Todos los campos tienen que separarse por comas. Es opcional tener espacios vacios antes y despues de las comas.
+		\item Los comentarios están permitidos con un \# al comienzo de una linea
+		\item Se permiten lineas vacías, simplemente son ignoradas
+		\item La primera línea no comentada/vacía debe empezar con``team\_info'', despues incluir el nombre del equipo, el canal al que se está participando (main o creative) e información de contacto
+			\begin{tcolorbox}
+				team\_info, my recsys team, main, my\_team\_email@gmail.com
+			\end{tcolorbox}
+		\item Por cada lista de reproducción tiene que haber una línea con el siguiente formato:
+			\begin{tcolorbox}
+			pid, trackuri\_1, trackuri\_2, trackuri\_3, ..., trackuri\_499, trackuri\_500
+			\end{tcolorbox}
+		con exactamente 500 canciones, donde \textit{pid} es el id de la lista de reproducción y \textit{ trackuri\_n} es el URI de una de las canciones de Spotify recomendadas para esta lista de reproducción.
+	\end{itemize}
+	\subsubsection{Notas importantes sobre la entrega}
+	\begin{itemize}
+		\item Las canciones provistas como parte del set del reto no serán incluidas en la entrega
+		\item La entrega no tendrá canciones duplicadas
+		\item La entrega tendrá exactamente 500 canciones, después de quitar las canciones duplicadas
+		\item Cualquier entrega que incumpla alguna de las reglas será rechazada por el sistema de puntuación
+		Un ejemplo de entrega se encuentra en el anexo \colorbox{red}{Añadir referencia}, para poder ver como es la entrega esperada. 
+	\end{itemize}
+
+	\subsubsection{Métricas}
+	Las entregas son evaluadas usando las siguientes métricas. Todas las métricas serán evaluadas al nivel de canción (las canciones exactas deben coincidir) y al nivel de artista (cualquier canción de ese artista se considera acierto).A continuación, nos referimos al conjunto de canciones objetivo como \textit{G}, y nos referimos a la lista de canciones recomendadas como \textit{R}. Nos referimos al tamaño de una lista como $| *|$ ,y usamos desde:hasta subíndices para indexar una lista.
+	\begin{enumerate}
+		\item  R-precision
+		R-precision es el número de canciones relevantes conseguidas dividido por el número de canciones relevantes conocidas
+		\begin{align*}
+		  \text{R-precision} &= \frac{|G \cap R_{1:|G|}|}{|G|}
+		\end{align*}
+		Esta métrica es una media de todas las listas de reproducción en el dataset del reto. Premia el número total de canciones relevantes conseguidas, sin importar su orden.
+		\item Normalized discounted comulative gain (NDCG)
+		Discounted cumulative gain (DCG) mide la calidad de la clasificación de las canciones recomendadas, aumentando cuando canciones relevantes están más altas en la lista. Normalized DCG  (NDCG) se determina calculando el DCG y dividiéndolo por el DCG ideal en el que las canciones recomendadas están perfectamente clasificadas. 
+		\begin{align*}
+		  DCG &= rel_{1}+\sum_{i=2}^{|R|}\frac{rel_{i}}{log_{2}(i+1)}
+		\end{align*}
+		El DCG ideal o IDCG es, en nuestro caso, igual a :
+		\begin{align*}
+		  IDCG &= 1+\sum_{i=2}^{|G|}\frac{1}{log_{2}(i+1)}
+		\end{align*}
+		Si el tamaño del conjunto de la intersección de G y R, es vacío, entonces DCG es igual a 0.
+ 
+		La métrica de NDCG se calcula entonces como:
+		\begin{align*}
+		  NDCG &= \frac{DCG}{IDCG}
+		\end{align*}
+
+		\item Clics en Canciones Recomendadas
+		Canciones Recomendadas es una características de Spotify. Dado un conjunto de canciones de una lista de reproducción, se recomienda 10 canciones a añadir a la lista. La lista puede ser refrescada para añadir 10 canciones mas. Clics en canciones recomendadas es el número de recargas necesarias antes de que una canción relevante sea encontrada. Se calcula con:
+		\begin{align*}
+		 \text{clics} = \left\lfloor \frac{ \arg\min_i \{ R_i\colon R_i \in G|\} - 1}{10} \right\rfloor
+		\end{align*}
+		Si no se puede calcular (en el caso de que no haya ninguna canción relevante en \textit{R}), devuelve 51, que es el numero máximo de clics posibles mas uno.
+	\end{enumerate}
+	\subsection{Dataset de entrenamiento}
+	El dataset usado para entrenar el modelo es ``THe Million Playlist Dataset'', MPD a partir de ahora. Consiste en 1.000.000 de listas de reproducción creadas por usuarios de Spotify. El dataset ha sido distribuido por Spotify para los participantes académicos del reto RecSys 2018.
+	\subsubsection{Qué es MPD}
+	MPD consta de un millón de listas de reproducción generadas por usuarios. Estas listas de reproducción fueron creadas entre enero de 2010 y octubre de 2017. Cada lista de reproducción contiene un titulo, una lista de canciones, información sobre ediciones y más información miscelánea que veremos en mas profundidad en  \colorbox{red}{Añadir referencia}.
+	\subsubsection{Descripción detallada}
+	MPD consiste en 1000 archivos partidos. Estos archivos siguen la siguiente regla de nomenclatura:
+	mpd.slice.\textit{ID\_LSITA\_INICIAL-ID\_LISTA\_FINAL}
+	Por ejemplo, las primearas 1000 listas de reproducción están en el archivo mpd.slice.0-999.json y las últimas 1000 están en el archivo mpd.slice.999000-999999.json
+	Cada archivo es un diccionario JSON con dos campos, \textit{info} y \textit{playlists}
+	\begin{itemize}
+		\item info
+		El campo \textit{info} es un diccionario que contiene información general sobre una porción del MPD
+		\begin{itemize}
+			\item \textbf{slice} - rango de listas de reproducción que abarca está porción en concreto
+			\item \textbf{version} - versión actual del MPD
+			\item \textbf{generated\_on} - maca de tiempo indicando cuando el archivo fue generado
+		\end{itemize}
+		\item playlists
+		lista que contiene 1000 listas de reproducción. Cada lista es un diccionario que contiene los siguientes campos:
+		\begin{itemize}
+			\item \textbf{pid} - integer - id de la lista de reproducción dentro del MPD, valor entre 0 y 999999
+			\item \textbf{name} - string - nombre de la lista de reproducción
+			\item \textbf{description} - string opcional - si existe es la descripción dada a la lista de reproducción. La mayoría de las listas no tienen descripción
+			\item \textbf{modified\_at} - seconds - marca de tiempo (en segundos desde el epoch) en la que la lista fue editada por última vez. Los tiempos se redondean a medianoche GMT del día en el que la lista fue actualizada por última vez
+			\item \textbf{num\_artists} - número total de artistas únicos de las canciones de la lista
+			\item \textbf{num\_albums} - número total de álbumes únicos de las canciones de la lista
+			\item \textbf{num\_tracks} - número de canciones en la lista
+			\item \textbf{num\_followers} - número de seguidores de la lista en el momento en el que MPD fue creado. El número no incluye al creador
+			\item \textbf{num\_edits} - número de sesiones de edición separadas. Canciones añadidas dentro de una ventana de 2 horas se consideran añadidas en una misma sesión
+			\item \textbf{duration\_ms} - milliseconds - duración total de todas las canciones en millisegundos
+			\item \textbf{collaborative} - boolean - si es True la lista es collaborative, múltiples usuarios pueden contribuir a la lista
+			\item \textbf{tracks} - lista con la información de cada una de las canciones de la lista de reproducción. Cada elemento de la lista es un diccionario con los siguientes campos:
+			\begin{itemize}
+				\item \textbf{track\_name} - nombre de la canción
+				\item \textbf{track\_uri} - URI de la canción en Spotify
+				\item \textbf{album\_name} - nombre del álbum de la canción
+				\item \textbf{album\_uri} - URI del álbum en Spotify
+				\item \textbf{artis\_name} - nombre del artista principal de la canción
+				\item \textbf{artis\_uri} - URI del artista principal en Spotify
+				\item \textbf{duration\_ms} - duración de la canción en milisegundos
+				\item \textbf{pos} - posición de la canción en la lista, empezando desde 0
+			\end{itemize}	
+		\end{itemize}
+	\end{itemize}
+	\subsubsection{Cómo fue creado el dataset}
+	El dataset de MPD fue creado cogiendo muestras del conjunto de billones de listas de reproducción que los usuarios de Spotify han ido creando sobre los años. Listas de reproducción escogidas aleatoriamente que cumplen los siguientes criterios:
+	\begin{itemize}
+		\item Creada por un usuario residente en Estados Unidos que tenga al menos 13 años de edad
+		\item En el momento de crear el MPD era una lista pública
+		\item Contiene al menos 5 canciones
+		\item Contiene 250 o menos canciones
+		\item Contiene al menos 3 artistas diferentes
+		\item Contiene al menos 2 álbumes diferentes
+		\item No contiene canciones locales (aquellas que tiene el usuario, que no pertenecen a Spotify)
+		\item Tienen al menos un seguidor, sin contar al creador
+		\item Creada después del 1 de enero de 2010 y antes del 1 de diciembre de 2017
+		\item No tiene un titulo ofensivo
+		\item No tiene un titulo orientado a adultos si el creador de la lista es era menor de 18 años en el momento de la creación
+
+	Adicionalmente, algunas lista de reproducción han sido modificadas:
+		\item Las descripciones de listas de reproducción potencialmente ofensivas han sido eliminadas
+		\item Las canciones añadidas desde el 1 de noviembre de 2017 en adelante han sido eliminadas
+	\end{itemize}
+	Las listas son escogidas aleatoriamente, en la mayoría de los casos, pero en algunas listas se han añadido "paper tracks", entradas intencionalmente erróneas, para poder identificar si el dataset esta siendo usado fuera de las condiciones especificadas.
+	\subsubsection{Datos demográficos}
+	Datos demográficos de los usuarios que han contribuido a la generación de MPD
+	\begin{itemize}
+		\item \textbf{Genero}
+		\begin{itemize}
+			\item Masculino: 45\%
+			\item Femenino: 54\%
+			\item No especificado: 0.5\%
+			\item No binario: 0.5\%
+		\end{itemize}
+		\item \textbf{Edad}
+		\begin{itemize}
+			\item 18-24: 43\%
+			\item 25-34: 31\%
+			\item 35-44: 9\%
+			\item 45-54: 4\%
+			\item 55+: 3\%
+			\item otros: 10\%
+		\end{itemize}
+		\item \textbf{Nacionalidad}
+		\begin{itemize}
+			\item Estados Unidos: 100\%
+		\end{itemize}
+	\end{itemize}
+	 
+	\subsection{Dataset del reto}
+	El dataset consta de 10.000 listas de reproducción incompletas.
+	\subsubsection{Formato}
+	Un único diccionario JSON con tres campos:
+	\begin{itemize}
+		\item \textbf{date} - fecha en la que el dataset fué generado. Debería ser ``2018-01-16 08:47:28.198015''
+		\item \textbf{version} - versión del dataset. Debería ser ``v1''
+		\item \textbf{playlists} - una lista de 10.000 listas de reproducción incompletas. Cada elemento de esta lista contiene los siguientes campos:
+		\begin{itemize}
+			\item \textbf{pid} - identificador de la lista de reproducción
+			\item \textbf{name} - (opcional) nombre de la lista de reproducción. En algunos casos el nombre no se entrega
+			\item \textbf{num\_holdouts} - número de canciones que han sido omitidas de la lista de reproducción
+			\item \textbf{tracks} - canciones que contiene la lista de reproducción, puede ser una lista vacía. Cada elemento de la lista contiene los siguientes campos:
+			\begin{itemize}
+				\item \textbf{pos} - posición de la canción dentro de la lista de reproducción, empezando a  contar desde 0
+				\item \textbf{track\_name} - nombre de la canción
+				\item \textbf{track\_uri} - URI de la canción en Spotify
+				\item \textbf{artist\_name} - nombre del artista principal de la canción
+				\item \textbf{artist\_uri} - URI del artista principal en Spotify
+				\item \textbf{album\_name} - nombre del álbum al que pertenece la canción
+				\item \textbf{album\_uri} - URI del álbum al que pertenece la canción en Spotify
+				\item \textbf{duration\_ms} - duración de la canción en milisegundos
+			\end{itemize}
+			\item \textbf{num\_samples} - número de canciones incluidas en la lista de reproducción
+			\item \textbf{num\_tracks} - número total de canciones que tiene la lista de reproducción completa
+
+		Hay que destacar que len(tracks) es igual a num\_samples y que num\_tracks es igual a num\_samples más num\_holdouts
+		\end{itemize}
+	\end{itemize}
+	\subsubsection{Categorías del reto}
+	Las 10.000 listas de reproducción se reparten en 10 categorías diferentes, con 1.000 listas de reproducción por categoría
+	\begin{enumerate}
+		\item Predecir canciones para una lista de reproducción dando sólo el nombre de la lista
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y la primera canción
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y las 5 primeras canciones
+		\item predecir canciones para una lista de reproducción dando sólo las 5 primeras canciones
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y las 10 primeras canciones
+		\item predecir canciones para una lista de reproducción dando sólo las 10 primeras canciones
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y las 25 primeras canciones
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y 25 canciones aleatorias
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y las 100 primeras canciones
+		\item predecir canciones para una lista de reproducción dando sólo el nombre de la lista y 100 canciones aleatorias
+	\end{enumerate}
+	\subsubsection{Cómo el dataset del reto fue contruido}
+	Las listas de reproducción en el dataset del reto han sido seleccionadas siguiendo el mismo criterio usado para la selección del Dataset del Millón de Playlists, MPD  \colorbox{red}{Añadir referencia}. Adicionalmente, las listas de reproducción en el dataset del reto siguen las siguientes limitaciones:
+	\begin{itemize}
+		\item Todas las canciones en el dataset del reto aparecen en el MPD
+		\item Todas las canciones ocultas, dentro del holdout, aparecen en el MPD
+	\end{itemize}
+	\subsubsection{Ejemplo de entrega}
+	Ejemplo en: \colorbox{red}{Añadir referencia}
+
+	Este ejemplo muestra el formato esperado, debe seguir las siguientes reglas:
+	\begin{itemize}
+		\item Todos los campos deben estar separados por comas. Se acepta que haya espacios antes y después de las comas, pero es opcional
+		\item Se permiten comentarios con ``\#'' al inicio de una linea
+		\item Se permiten lineas vacías, simplemente son ignoradas
+		\item La primera línea no comentada/vacía debe empezar con ``team\_info'' y después incluir el nombre del equipo, el modo en el que está participando (main o creative) y  la información de contacto
+		\item Por cada lista de reproducción debe haber una línea con exactamente 500 canciones de la siguiente forma: pid, trackuri\_1, trackuri\_2, ..., trackuri\_499, trackuri\_500
+		\item Las canciones dadas para realizar el reto, de una lista de reproducción en particular, no deben incluirse en la entrega de esa lista de reproducción.
+		\item La entrega para una lista de reproducción en partícula no debe tener canciones duplicadas
+		\item La entrega para una lista de reproducción en particular debe tener exactamente 500 canciones
+		\item Cualquier entrega que no cumpla estas normas no podrá ser puntuada 
+	\end{itemize}
+
+\newpage
+\section{Desarrollo}
+\subsection{Filtrado colaborativo}
+Usando solo los datos proporcionados en el MPD podemos sacar 2 conjuntos principales: Canciones y Listas de reproducción.
+\begin{figure}[h!]
+	\includegraphics[width=\linewidth]{Imagenes/Diagrama_userXlr.png}
+	\caption{Usuario X lista de reproduccion}
+	\label{fig:userxlr1}
+\end{figure}
+
+Al juntar estos dos conjuntos de datos conseguimos una matriz \textit{UserxItem} en la que las filas representan las listas de reproducción y cada columna representa una canción. Esto nos deja una matriz cuya principal característica es que los datos están muy dispersos. Cave destacar que el significado de una matriz dispersa no se aplica de la misma forma a una matriz \textit{UserxItem}, el significado matemático implica que el valor sea 0, en nuestro caso ese 0 significa un campo no definido o inexistente, implica que una canción no pertenece a una lista de reproducción. Por lo que una matriz dispersa no implica que haya muchos 0, implica que hay muchos campos vacíos. Llegamos a una matriz dispersa ya que cada \textit{User}, lista de reproducción, sólo puede tener como máximo 250 canciones, teniendo en cuenta que hay 2.262.292 canciones en todo el MPD  por cada lista de reproducción como mucho se usa un 0.01\% del espacio.
+
+
+\bigskip
+\textbf{¿Cual es el objetivo del filtrado colaborativo?}
+\bigskip
+
+El objetivo principal es hacer recomendaciones usando una matriz dispersa valiéndose de las similitudes entre sus usuarios. La matriz tiene que ser dispersa, de no serlo no hay nada que recomendar, ya que el conocimiento sería perfecto, si todas las listas tienen todas las canciones no se podría realizar recomendaciones, es necesario que haya información oculta, si la información recibida en forma de matriz no es completa significa que el algoritmo va a poder actuar.
+Entonces el objetivo principal del filtrado colaborativo es calcular la probabilidad de que una canción pueda pertenecer a una lista de reproducción dada.
+
+\bigskip
+\colorbox{red}{Todo esto está por definir, solo es una primera aproximación sobre las ideas a contar}
+
+\bigskip
+
+El filtrado colaborativo asume que a los usuarios les gustan cosas similares a lo que ya les gusta, y similares a lo que le gusta a persona con gustos similares. Aplicando esto a nuestro problema, el filtrado colaborativo asume que las listas de reproducción asimilan con más probabilidad canciones que estén en listas de reproducción parecidas.
+
+
+\bigskip
+Por ende, el filtrado colaborativo es esencial para poder crear un algoritmo de recomendación.
+En este trabajo vamos a tratar varios de estos algoritmos para primero ver cómo es su desempeño en nuestro problema y a partir de ahí poder desarrollar nuestro propio algoritmo buscando una mejora, ya sea en la precisión de las recomendaciones o en el tiempo de ejecución.
+
+\bigskip
+El primer algoritmo que hemos implementado ha sido \textbf{``user-user''}. Este algoritmo se caracteriza por buscar las relaciones directamente desde los usuarios, listas de reproducción en nuestro caso. Examina las listas de reproducción y  calcula la similitud entre ellas, con jaccard, y escoge las canciones que mas se repitan entre las listas con mayor puntuación.
+
+\bigskip
+La segunda implementación que hemos realizado ha sido \textbf{``item-item''}. Este algoritmo se caracteriza por buscar las relaciones directamente desde los items, en nuestro caso las canciones. Examina las canciones y busca en que listas de reproducción están, calcula la similitud entre ellas y escoge las canciones que tengan mayor puntuación.
+
+\bigskip
+
+\subsection{user-user}
+\begin{figure}[h!]
+	\includegraphics[width=\linewidth]{Imagenes/Diagrama_flow_useruser.png}
+	\caption{Flujo de ejecución user-user }
+	\label{fig:userxlr1}
+\end{figure}
+Para implementar el algoritmo de filtrado colaborativo \textit{user-user} hemos seguido el siguiente flujo de ejecución:
+\begin{enumerate}
+	\item Procesamiento de datos: Para poder operar bien los datos tenemos que filtrar la información para quedarnos sólo con aquello que nos sea útil. El algoritmo recibe los datos, en formato JSON, sacados del MPD. Los datos escogidos son: el id de cada lista de reproducción (\textit{pid}) y la URI de cada canción (\textit{track\_uri}). estos datos se almacenan en una matriz UxV, siendo U la cantidad de ids y V la cantidad de canciones únicas. Según van apareciendo URIs nuevas se les asigna un identificador, para no perder el valor de esta URI creamos un diccionario que mantiene la relación entre el nuevo identificador y la URI. Cada fila representa una lista de reproducción, y su contenido son los identificadores de las canciones que pertenecen a cada lista. Para facilitar el acceso a estos datos y no tener que procesar los JSON en cada ejecución del algoritmo guardamos esta matriz en un archivo CSV, para ello primero lo transformamos en un DataFrama apoyándonos en la librería de Python Pandas. Este método consta de dos bucles \textit{for} para poder recorrer todo el fichero, la complejidad temporal es de $O(n^2)$, en el caso de querer procesar todos los datos del MPD puede llegar a tardar mucho tiempo \colorbox{red}{Hacer medidas, una tabla o algo}
+\end{enumerate}
+
+
+
+\end{document}
