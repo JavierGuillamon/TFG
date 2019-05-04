@@ -9,6 +9,7 @@ import json
 import pandas as pd
 import numpy as np
 from collections import Counter
+import math
 # =============================================================================
 # 
 # def add_to_matrix(matrix, pid, tid):
@@ -53,14 +54,14 @@ from collections import Counter
 #     df.to_csv(name_csv,index=False) 
 # =============================================================================
     
-def intersection_count(list1, list2):
+def intersection_count(list1, list2):#Borrar
     result = 0
     for i in range(len(list1)):
         if list1[i] == list2[i] == 1:
             result += 1
     return result
 
-def union_count(list1, list2):
+def union_count(list1, list2):#BORRAR
     result = 0
     for i in range(len(list1)):
         if list1[i] == 1 or list2[i] == 1:
@@ -150,7 +151,7 @@ def temp_update_similarity_and_playlists(name_csv, similarity, new_playlist):
 #     #alamcenar los k vecinos en una lista ordenada, realizar elpredict y despues el MSE, para esto tengo que volver a hacer el procesamiento de datos partiendo en 80/20
 # 
 # =============================================================================
-def predict_for_playlsit(pid, similarity, playlists, actual_pl):
+def predict_for_playlsit(pid, similarity, playlists, actual_pl):#BORRAR Al TERMINAR
     #coger la fila del pid
     #seleccionar los k valores mas altos
     #contar las canciones que se repiten entre esas listas
@@ -180,6 +181,8 @@ def get_songs_not_in_playlist(list1,list2):
     return songs
     
 def check_any_list_in_list(list1, list2):
+    print(list1)
+    print(list2)
     for i in list1:
         if i[0] in list2:
             return True
@@ -195,10 +198,8 @@ def test(playlists_train, playlist_test, similarity):
         predict = predict_for_playlsit(pid,simil,playlists,p)
         if check_any_list_in_list(predict, playlist_test):
             score +=1
-# =============================================================================
-#         if playlist_test[i+1] in predict:
-#             score+=1
-# =============================================================================
+        #if playlist_test[i+1] in predict:
+            #score+=1
         print("Actual list: ",p)
         print("prediction: ",predict)
         print("actual score: ",score)
@@ -206,20 +207,70 @@ def test(playlists_train, playlist_test, similarity):
     score = score/len(playlist_test)
     print("final score = ",str(score))
 
-     
+def scores(all_playlists, playlist_test, similarity):
+    simil,playlists, pid = temp_update_similarity_and_playlists(all_playlists,similarity,playlist_test)
+    matrix = playlists.values
+    index = simil.nlargest(100,str(pid))[1:][str(pid)].index
+    songs = []
+    for i in index:
+        songs += get_songs_not_in_playlist(matrix[i],matrix[pid])
+    count = Counter(songs)
+    most_common_tuple = count.most_common(500)
+    songs_recommended = [song for song, cont in most_common_tuple]
+    rp = r_precision(playlist_test,songs_recommended)
+    ndcg = normalized_discounted_comulative_gain(playlist_test,songs_recommended)
+    c = clicks(playlist_test,songs_recommended)
+    return rp, ndcg, c
+
+def r_precision(playlist_test, songs_recommended):
+	#Número de canciones relevantes conseguidas dividida por el número de canciones relevantes conocidas
+    lenG = len(playlist_test)
+    intersection = set(playlist_test).intersection(songs_recommended[0:lenG])
+    result = len(intersection)/lenG
+    return result
+
+def normalized_discounted_comulative_gain(playlist_test, songs_recommended):
+    #DCG / IDCG
+    #relevancia	
+    rel = []
+    for song in songs_recommended:
+        rel.append(1) if song in playlist_test else rel.append(0)	
+    dcg = rel[0]
+    for i in range(1,len(songs_recommended)):
+        dcg += (rel[i]/math.log(i+1,2))
+    idcg = 1
+    for i in range(1,len(playlist_test)):
+        idcg += (1/math.log(i+1,2))
+    ndcg = dcg/idcg
+    return ndcg
+
+def clicks(playlist_test, songs_recommended):
+    cont=0
+    p_set = set(playlist_test)
+    for i in range(50):
+        for j in songs_recommended[cont:cont+10]:
+            if j in p_set:
+                return i
+        cont += 10
+    return 51
 
 if __name__ == '__main__':
     read_and_save = False
     get_similarity_matrix = False
-    testb = True
+    testb = False
     if read_and_save:
         json_to_csv('mpd.slice.0-999.json',"pruebas3.csv")
     elif get_similarity_matrix:
         similarity = similarity_matrix("similarity.csv")
     elif testb:
-        p = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]
+        p = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,11880]
         test("pruebas3.csv",p,"similarity.csv")
     else:
-        print(predict_for_playlsit(0,"similarity.csv","pruebas3.csv"))
+        #print(predict_for_playlsit(0,"similarity.csv","pruebas3.csv"))        
+        p = [9,10,11,12,13,14,15,16,17,18,19,20,11880]
+        rp, ndcg,c = scores("pruebas3.csv",p,"similarity.csv")
+        print("R precision: ",rp)
+        print("NDCG: ",ndcg)
+        print("Clicks: ",c)
     
     print("done")
