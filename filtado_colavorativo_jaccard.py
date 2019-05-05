@@ -10,88 +10,27 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 import math
-# =============================================================================
-# 
-# def add_to_matrix(matrix, pid, tid):
-#     try:
-#         matrix[pid]
-#     except IndexError:
-#         #No exite la playlist
-#         prev_lane = matrix[pid-1]
-#         length = len(prev_lane)
-#         if length <= tid:
-#             length += 1
-#             new_column = np.zeros((pid,1), dtype=int)
-#             matrix = np.hstack([matrix,new_column])
-#         new_lane = np.zeros((length,), dtype=int)
-#         new_lane[tid]=1
-#         matrix = np.vstack([matrix,new_lane])
-#     try:
-#         matrix[pid][tid] = 1
-#     except IndexError:
-#         new_column = np.zeros((pid+1,1), dtype=int)
-#         new_column[pid][0] = 1
-#         matrix = np.hstack([matrix,new_column])
-#     return matrix
-# 
-# def json_to_csv1(name_json, name_csv):
-#     matrix = np.array([[0]])
-#     id_tracks = {}
-#     data = json.load(open(name_json))
-#     
-#     count =0
-#     playlists = data['playlists']
-#     for i in range(len(playlists)):
-#         tracks = playlists[i]["tracks"]
-#         pid = playlists[i]["pid"]
-#         for track in tracks:
-#             track_uri = track["track_uri"]
-#             if id_tracks.get(track_uri) == None:
-#                 id_tracks[track_uri]=count
-#                 count += 1           
-#             matrix = add_to_matrix(matrix,pid,id_tracks.get(track_uri))
-#     df = pd.DataFrame.from_records(matrix)
-#     df.to_csv(name_csv,index=False) 
-# =============================================================================
-    
-def intersection_count(list1, list2):#Borrar
-    result = 0
-    for i in range(len(list1)):
-        if list1[i] == list2[i] == 1:
-            result += 1
-    return result
+import time
+from os import listdir
+from concurrent.futures import ThreadPoolExecutor
 
-def union_count(list1, list2):#BORRAR
-    result = 0
-    for i in range(len(list1)):
-        if list1[i] == 1 or list2[i] == 1:
-            result += 1
-    return result
-
-def json_to_csv(name_json, name_csv):
+def json_to_csv(name_json, name_csv,i):
+    print(i)    
+    start_time = time.time()
     matrix = []
-    id_tracks = {}
     data = json.load(open(name_json))
-    count = 0
-    old_pid = -1
+    matrix_count = 0
     playlists = data['playlists']
     for playlist in playlists:
         tracks = playlist["tracks"]
-        pid = playlist["pid"]
+        matrix.append([])
         for track in tracks:
-            track_uri = track["track_uri"]
-            id_track = id_tracks.get(track_uri)
-            if id_track == None:
-                id_tracks[track_uri] = count
-                id_track = count
-                count += 1
-            if old_pid != pid:
-                matrix.append([])
-            matrix[pid].append(id_track)
-            old_pid = pid
-        print(pid)
-    df = pd.DataFrame(matrix,dtype=np.int)
-    df.to_csv(name_csv,index=False)   
+            track_uri = track["track_uri"]              
+            matrix[matrix_count].append(track_uri)
+        matrix_count+=1
+    df = pd.DataFrame(matrix)
+    df.to_csv(name_csv,index=False)  
+    print(i," ---",(time.time() - start_time)," seconds ---")
                 
 
 def similarity_matrix(name_csv):
@@ -138,28 +77,12 @@ def temp_update_similarity_and_playlists(name_csv, similarity, new_playlist):
     simil.loc[num_playlist-1] = pd.Series(similarity)
     
     return simil,df,num_playlist-1
-# =============================================================================
-# def predict(name_similarity_matrix):
-#     K = 25
-#     neighbors = []
-#     df = pd.read_csv(name_similarity_matrix)
-#     matrix = df.values
-#     num_playlist = len(matrix)
-#     for i in range(num_playlist):
-#         for j in range(num_playlist):
-#             pass
-#     #alamcenar los k vecinos en una lista ordenada, realizar elpredict y despues el MSE, para esto tengo que volver a hacer el procesamiento de datos partiendo en 80/20
-# 
-# =============================================================================
+
 def predict_for_playlsit(pid, similarity, playlists, actual_pl):#BORRAR Al TERMINAR
     #coger la fila del pid
     #seleccionar los k valores mas altos
     #contar las canciones que se repiten entre esas listas
-    #devilver n canciones que ams se repitan
-# =============================================================================
-#     df = pd.read_csv(similarity)
-#     dfs = pd.read_csv(playlists)
-# =============================================================================
+    #devolver n canciones que ams se repitan
     df = similarity
     dfs = playlists
     matrix = dfs.values
@@ -259,7 +182,10 @@ if __name__ == '__main__':
     get_similarity_matrix = False
     testb = False
     if read_and_save:
-        json_to_csv('mpd.slice.0-999.json',"pruebas3.csv")
+        jsons = listdir("D:/Backup/TFG/data")
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            for i,js in enumerate(jsons):
+                executor.submit(json_to_csv,"D:/Backup/TFG/data/"+js,"csvs/"+str(i)+".csv",i)
     elif get_similarity_matrix:
         similarity = similarity_matrix("similarity.csv")
     elif testb:
